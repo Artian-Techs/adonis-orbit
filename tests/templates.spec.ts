@@ -45,9 +45,22 @@ test.group('Templates', () => {
           isSilenced: false,
         },
       ],
-      page: 1,
-      lastPage: 2,
-      total: 60,
+      pager: {
+        page: 2,
+        lastPage: 12,
+        total: 600,
+        previous: '/queue',
+        next: '/queue?page=3',
+        pages: [
+          { number: 1, href: '/queue', current: false },
+          { number: 2, href: '/queue?page=2', current: true },
+          { number: 3, href: '/queue?page=3', current: false },
+          { number: 4, href: '/queue?page=4', current: false },
+          { number: null, href: null, current: false },
+          { number: 12, href: '/queue?page=12', current: false },
+        ],
+      },
+      perPage: { current: 50, sizes: [25, 50, 100] },
     })
 
     assert.include(html, 'SendMail')
@@ -56,6 +69,11 @@ test.group('Templates', () => {
     assert.include(html, '<div class="brand"><svg></svg>')
     assert.include(html, '/queue/runs/1/retry')
     assert.include(html, 'Next')
+    assert.include(html, '<a class="page" href="/queue?page=12">12</a>')
+    assert.include(html, '<span class="page current">2</span>')
+    assert.include(html, '600 job(s)')
+    assert.include(html, '/queue/per-page/100')
+    assert.include(html, '<span class="page current">50</span>')
   })
 
   test('the list of the jobs says when it holds nothing', async ({ assert }) => {
@@ -67,13 +85,14 @@ test.group('Templates', () => {
       stats: null,
       status: 'failed',
       rows: [],
-      page: 1,
-      lastPage: 1,
-      total: 0,
+      pager: { page: 1, lastPage: 1, total: 0, previous: null, next: null, pages: [] },
+      perPage: { current: 50, sizes: [25, 50, 100] },
     })
 
     assert.include(html, 'No job yet.')
     assert.notInclude(html, 'Jobs per minute')
+    assert.notInclude(html, 'Previous')
+    assert.notInclude(html, 'Next')
   })
 
   test('the classes that are silenced are written', async ({ assert }) => {

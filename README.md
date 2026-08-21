@@ -45,6 +45,12 @@ Under it, one button reads the page in the light or in the dark. The page reads
 the mode of the machine while nobody chose; a choice is held in a cookie. The
 page holds no JavaScript.
 
+The list carries a pager over the table and under it: the number of every page
+that stands near the one that is read, the first, the last, and a gap between
+them. **Rows** says how many jobs one page holds — 25, 50 or 100. The choice is
+held in a cookie, thus the menu carries it from one status to the next. Without
+one, fifty.
+
 | Entry | What it shows |
 | --- | --- |
 | Overview | four numbers, then the last jobs of every status |

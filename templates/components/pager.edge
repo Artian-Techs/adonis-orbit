@@ -1,0 +1,39 @@
+<div class="pager">
+  <span class="muted">{{ pager.total }} job(s)</span>
+
+  @if(pager.previous)
+    <a href="{{ pager.previous }}">← Previous</a>
+  @end
+
+  @each(entry in pager.pages)
+    @if(entry.number === null)
+      <span class="muted">…</span>
+    @elseif(entry.current)
+      <span class="page current">{{ entry.number }}</span>
+    @else
+      <a class="page" href="{{ entry.href }}">{{ entry.number }}</a>
+    @end
+  @end
+
+  @if(pager.next)
+    <a href="{{ pager.next }}">Next →</a>
+  @end
+
+  @if(rows)
+    <span class="rows">
+      <span class="muted">Rows</span>
+      @each(size in perPage.sizes)
+        @if(size === perPage.current)
+          <span class="page current">{{ size }}</span>
+        @else
+          <form method="post" action="{{ path }}/per-page/{{ size }}">
+            @if(csrfToken)
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            @end
+            <button type="submit" class="page">{{ size }}</button>
+          </form>
+        @end
+      @end
+    </span>
+  @end
+</div>

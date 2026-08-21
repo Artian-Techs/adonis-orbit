@@ -46,8 +46,17 @@ async function visit(action: 'index' | 'silenced' | 'metrics', url = '/queue', c
 }
 
 /** One request that changes something, and the answer that follows it. */
-async function send(action: 'retry' | 'silence' | 'theme', params: Record<string, unknown>) {
+async function send(
+  action: 'retry' | 'silence' | 'theme' | 'perPage',
+  params: Record<string, unknown>,
+  from?: string
+) {
   const request = new RequestFactory().merge({ url: '/queue', method: 'POST' }).create()
+
+  if (from) {
+    request.request.headers.referer = from
+  }
+
   const ctx = new HttpContextFactory().merge({ request }).create()
 
   ctx.params = params
@@ -305,3 +314,143 @@ test.group('Dashboard theme', () => {
     assert.include(html, '/queue/theme/light')
   })
 })
+
+test.group('Dashboard pages', (group) => {
+  group.each.setup(async () => {
+    await truncate()
+
+    Locator.register('SendMail', SendMail as never)
+  })
+
+  /** More rows than one page holds, of one status and of one class. */
+  function fill(count: number) {
+    return JobRun.createMany(
+      Array.from({ length: count }, () => ({
+        jobId: randomUUID(),
+        name: 'SendMail',
+        queue: 'default',
+        status: JobRunStatus.FAILED,
+        payload: {},
+        attempts: 1,
+      }))
+    )
+  }
+
+  test('the pager carries the status from one page to the next', async ({ assert }) => {
+    await fill(60)
+
+    const html = await visit('index', '/queue?status=failed')
+
+    assert.include(html, 'href="/queue?status=failed&amp;page=2"')
+    assert.include(html, '60 job(s)')
+  })
+
+  test('the first page of a list carries no page in its address', async ({ assert }) => {
+    await fill(60)
+
+    const html = await visit('index', '/queue?page=2')
+
+    assert.include(html, '<a href="/queue">← Previous</a>')
+  })
+
+  test('a list of many pages writes the first and the last, and a gap', async ({ assert }) => {
+    await fill(160)
+
+    const cookie = await size(25)
+    const html = await visit('index', '/queue?page=1', cookie)
+
+    assert.include(html, '<span class="page current">1</span>')
+    assert.include(html, '>3</a>')
+    assert.include(html, '<span class="muted">…</span>')
+    assert.include(html, '>7</a>')
+  })
+
+  test('a page that stands past the last one answers with the last one', async ({ assert }) => {
+    await fill(60)
+
+    const html = await visit('index', '/queue?page=99')
+
+    assert.include(html, '<span class="page current">2</span>')
+    assert.include(html, 'SendMail')
+  })
+
+  test('the size of the cookie says how many rows one page holds', async ({ assert }) => {
+    await fill(30)
+
+    const cookie = await size(25)
+    const html = await visit('index', '/queue', cookie)
+
+    assert.equal(rowsOf(html), 25)
+    assert.include(html, '<span class="page current">25</span>')
+  })
+
+  test('a page holds fifty rows while nobody chose', async ({ assert }) => {
+    await fill(60)
+
+    assert.equal(rowsOf(await visit('index')), 50)
+  })
+
+  test('a size that nobody offers answers "not found"', async ({ assert }) => {
+    const response = await send('perPage', { count: '7' })
+
+    assert.equal(response.getStatus(), 404)
+    assert.isUndefined(response.getHeader('set-cookie'))
+  })
+
+  test('a list of one page carries no pager but keeps the sizes', async ({ assert }) => {
+    await fill(3)
+
+    const html = await visit('index')
+
+    assert.notInclude(html, 'Previous')
+    assert.notInclude(html, 'Next')
+    assert.include(html, '/queue/per-page/100')
+  })
+
+  test('a size chosen from a list of one status stays on that status', async ({ assert }) => {
+    const response = await send('perPage', { count: '25' }, '/queue?status=failed&page=2')
+
+    assert.equal(response.getStatus(), 302)
+    assert.equal(response.getHeader('location'), '/queue?status=failed&page=2')
+  })
+
+  test('a button that silences a class stays on the list that carried it', async ({ assert }) => {
+    const response = await send('silence', { name: 'SendMail' }, '/queue?status=failed')
+
+    assert.equal(response.getHeader('location'), '/queue?status=failed')
+  })
+
+  test('a button that asks for a job again stays on the list', async ({ assert }) => {
+    const run = await makeRun({ name: 'SendMail', status: JobRunStatus.FAILED })
+    const response = await send('retry', { id: run.id }, '/queue?status=failed')
+
+    assert.equal(response.getHeader('location'), '/queue?status=failed')
+  })
+
+  test('the sizes stand over the table and under it', async ({ assert }) => {
+    await fill(60)
+
+    const html = await visit('index')
+
+    assert.lengthOf(html.match(/\/queue\/per-page\/100/g) ?? [], 2)
+
+    const table = html.indexOf('<div class="panel">')
+    const first = html.indexOf('class="rows"')
+    const last = html.lastIndexOf('class="rows"')
+
+    assert.isBelow(first, table)
+    assert.isAbove(last, table)
+  })
+})
+
+/** Choose a size of page, and give back the cookie that holds the choice. */
+async function size(count: number) {
+  const response = await send('perPage', { count: String(count) })
+
+  return String(response.getHeader('set-cookie')).split(';')[0]
+}
+
+/** How many jobs one page shows. */
+function rowsOf(html: string) {
+  return (html.match(/<td>\s*<div class="actions">/g) ?? []).length
+}

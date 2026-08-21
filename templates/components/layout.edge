@@ -118,8 +118,23 @@
       overflow-x: auto; font-size: 12px; max-width: 520px; white-space: pre-wrap;
     }
     details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
-    .pager { display: flex; gap: 14px; align-items: center; margin-top: 16px; }
+    .pager {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      margin: 16px 0; font-size: 13px;
+    }
     .pager a { color: inherit; }
+    .pager form { display: inline; }
+    .page {
+      display: inline-block; min-width: 30px; padding: 4px 8px; border-radius: 6px;
+      border: 1px solid var(--line); background: var(--card); text-align: center;
+      text-decoration: none; font: inherit; font-size: 13px; color: inherit; cursor: pointer;
+    }
+    a.page:hover, button.page:hover { border-color: var(--accent); color: var(--accent); }
+    .page.current {
+      border-color: var(--accent); background: var(--accent-soft);
+      color: var(--accent); font-weight: 600; cursor: default;
+    }
+    .rows { display: flex; gap: 6px; align-items: center; margin-left: auto; }
     .empty { padding: 28px; text-align: center; color: var(--muted); }
   </style>
 </head>

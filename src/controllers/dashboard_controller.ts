@@ -13,6 +13,16 @@ import type { OrbitConfig } from '../types.js'
 
 const PER_PAGE = 50
 
+/** The sizes of a page that a person chooses between. */
+const PER_PAGE_SIZES = [25, 50, 100]
+
+/** Where the size of a page is held, and for how long. */
+const PER_PAGE_COOKIE = 'orbit_per_page'
+const PER_PAGE_AGE = '1y'
+
+/** How many numbers of pages stand on each side of the one that is read. */
+const PAGER_WINDOW = 2
+
 /** The two modes that a person chooses between. */
 const THEMES = ['light', 'dark']
 
@@ -22,6 +32,13 @@ const THEME_AGE = '1y'
 
 /** The statuses of a job that a person may ask for again. */
 const ENDED_BADLY: JobRunStatusValue[] = [JobRunStatus.FAILED, JobRunStatus.LOST]
+
+/** What the list shows, and what the pager carries from one page to the next. */
+interface Filters {
+  status?: string
+  job?: string
+}
+
 /** How far back the metrics read. */
 const METRICS_WINDOW = { hours: 24 }
 
@@ -76,23 +93,38 @@ export default class DashboardController {
     const page = Number(request.input('page', 1)) || 1
 
     const silenced = await this.#silencedNames()
-    const query = JobRun.query().orderBy('id', 'desc')
+    const perPage = this.#perPage(request)
 
-    if (status) {
-      query.where('status', status)
+    const build = () => {
+      const query = JobRun.query().orderBy('id', 'desc')
+
+      if (status) {
+        query.where('status', status)
+      }
+
+      /**
+       * A person who asks for one job asks for that job, thus a class that is
+       * silenced answers here as any other class.
+       */
+      if (job) {
+        query.where('jobId', job)
+      } else if (silenced.length > 0) {
+        query.whereNotIn('name', silenced)
+      }
+
+      return query
     }
+
+    let runs = await build().paginate(page, perPage)
 
     /**
      * A person who asks for one job asks for that job, thus a class that is
      * silenced answers here as any other class.
      */
-    if (job) {
-      query.where('jobId', job)
-    } else if (silenced.length > 0) {
-      query.whereNotIn('name', silenced)
+    if (page > runs.lastPage && runs.lastPage > 0) {
+      runs = await build().paginate(runs.lastPage, perPage)
     }
 
-    const runs = await query.paginate(page, PER_PAGE)
     const answers = await this.#answers(runs.all())
     const alone = Boolean(status || job)
 
@@ -103,10 +135,108 @@ export default class DashboardController {
       stats: alone ? null : await this.#stats(),
       status: status ?? '',
       rows: runs.all().map((run) => this.#row(run, silenced, answers)),
-      page: runs.currentPage,
-      lastPage: runs.lastPage,
-      total: runs.total,
+      pager: this.#pager(runs, { status, job }),
+      perPage: { current: perPage, sizes: PER_PAGE_SIZES },
     })
+  }
+
+  /**
+   * How many rows one page holds.
+   *
+   * The choice is held in a cookie, thus the menu carries it from one status
+   * to the next and no address holds it.
+   */
+  #perPage(request: HttpContext['request']) {
+    const size = Number(request.plainCookie(PER_PAGE_COOKIE))
+
+    return PER_PAGE_SIZES.includes(size) ? size : PER_PAGE
+  }
+
+  /**
+   * Every address that the pager leads to. The page reads them, it builds
+   * none.
+   *
+   * The numbers stand around the page that is read, and the first and the last
+   * stand at the ends. A hole between two of them is a step that the page
+   * writes as a gap.
+   */
+  #pager(runs: { currentPage: number; lastPage: number; total: number }, filters: Filters) {
+    const current = runs.currentPage
+    const last = runs.lastPage
+    const href = (page: number) => this.#href({ ...filters, page: page > 1 ? page : undefined })
+
+    const pager = {
+      page: current,
+      lastPage: last,
+      total: runs.total,
+      previous: current > 1 ? href(current - 1) : null,
+      next: current < last ? href(current + 1) : null,
+      pages: [] as { number: number | null; href: string | null; current: boolean }[],
+    }
+
+    if (last < 2) {
+      return pager
+    }
+
+    const numbers = new Set([1, last])
+
+    for (let number = current - PAGER_WINDOW; number <= current + PAGER_WINDOW; number++) {
+      if (number >= 1 && number <= last) {
+        numbers.add(number)
+      }
+    }
+
+    let previous = 0
+
+    for (const number of [...numbers].sort((a, b) => a - b)) {
+      if (previous > 0 && number - previous > 1) {
+        pager.pages.push({ number: null, href: null, current: false })
+      }
+
+      pager.pages.push({ number, href: href(number), current: number === current })
+      previous = number
+    }
+
+    return pager
+  }
+
+  /** One address of the page, with the values that name what it shows. */
+  #href(params: Record<string, string | number | undefined>) {
+    const query = new URLSearchParams()
+
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') {
+        query.set(key, String(value))
+      }
+    }
+
+    const search = query.toString()
+    const { path } = this.#config()
+
+    return search ? `${path}?${search}` : path
+  }
+
+  /**
+   * Read more rows on one page, or fewer.
+   *
+   * The choice is held in a cookie, as the mode is. A page that stands past
+   * the last one after the change answers with the last one.
+   */
+  async perPage({ params, response }: HttpContext) {
+    const size = Number(params.count)
+
+    if (!PER_PAGE_SIZES.includes(size)) {
+      return response.notFound({ success: false, error: 'Not found' })
+    }
+
+    response.plainCookie(PER_PAGE_COOKIE, String(size), {
+      path: this.#config().path,
+      maxAge: PER_PAGE_AGE,
+      httpOnly: false,
+      sameSite: 'lax',
+    })
+
+    return response.redirect().withQs().back()
   }
 
   /** What the page is called. */

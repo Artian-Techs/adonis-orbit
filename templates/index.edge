@@ -22,6 +22,8 @@
     <h2>Recent jobs</h2>
   @end
 
+  @!component('orbit::components/pager', { pager, path, csrfToken, perPage, rows: true })
+
   <div class="panel">
     <table>
       <thead>
@@ -99,13 +101,5 @@
     </table>
   </div>
 
-  <div class="pager">
-    @if(page > 1)
-      <a href="{{ path }}?page={{ page - 1 }}&status={{ status }}">← Previous</a>
-    @end
-    <span class="muted">Page {{ page }} of {{ lastPage }} — {{ total }} job(s)</span>
-    @if(page < lastPage)
-      <a href="{{ path }}?page={{ page + 1 }}&status={{ status }}">Next →</a>
-    @end
-  </div>
+  @!component('orbit::components/pager', { pager, path, csrfToken, perPage, rows: true })
 @end

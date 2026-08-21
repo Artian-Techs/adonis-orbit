@@ -19,6 +19,7 @@ export function registerRoutes(router: HttpRouterService, config: OrbitConfig) {
       router.post('/runs/:id/retry', [DashboardController, 'retry']).as('orbit.retry')
       router.post('/jobs/:name/silence', [DashboardController, 'silence']).as('orbit.silence')
       router.post('/theme/:theme', [DashboardController, 'theme']).as('orbit.theme')
+      router.post('/per-page/:count', [DashboardController, 'perPage']).as('orbit.perPage')
     })
     .prefix(config.path)
     .use(dashboardAuth(config))

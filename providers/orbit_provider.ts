@@ -4,6 +4,7 @@ import { Locator } from '@adonisjs/queue'
 import edge from 'edge.js'
 
 import PruneJobRuns from '../src/jobs/prune_job_runs.js'
+import ReconcileJobRuns from '../src/jobs/reconcile_job_runs.js'
 import type { OrbitConfig } from '../src/types.js'
 
 const DEFAULTS: OrbitConfig = { path: '/queue', authorize: () => false, sinks: [] }
@@ -32,6 +33,7 @@ export default class OrbitProvider {
      * lives here. It names itself to the queue.
      */
     Locator.register(PruneJobRuns.name, PruneJobRuns)
+    Locator.register(ReconcileJobRuns.name, ReconcileJobRuns)
 
     const { recordJobRuns } = await import('../src/recorder.js')
     const recorder = recordJobRuns(config)

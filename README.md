@@ -48,7 +48,7 @@ page holds no JavaScript.
 | Entry | What it shows |
 | --- | --- |
 | Overview | four numbers, then the last jobs of every status |
-| Pending, Running, Retrying, Completed, Failed | the same list, of one status |
+| Pending, Running, Retrying, Completed, Failed, Lost | the same list, of one status |
 | Silenced | the classes that the lists leave out |
 | Metrics | what each class and each queue cost over the last 24 hours |
 
@@ -203,6 +203,7 @@ One row for one job, completed at each step.
 | `retrying` | a try failed, the next one is set |
 | `completed` | done |
 | `failed` | every try fell |
+| `lost` | the queue let the job go, and no worker said how it ended |
 
 The row that the dispatch writes and the row that the worker writes are the
 same row. Either of the two can arrive first, thus the first one writes and the
@@ -210,8 +211,8 @@ second one completes.
 
 ## Ask a job again
 
-From the page, with the button on a row that failed. Or with the job that the
-package carries:
+From the page, with the button on a row that failed or that the queue lost. Or
+with the job that the package carries:
 
 ```ts
 import { JobRun, JobRunStatus, retryRun } from '@artian-techs/adonis-orbit'
@@ -260,6 +261,44 @@ them away at the end.
 `pnpm preview` opens the page on `http://localhost:3333/queue`, with jobs of
 every status to read and the name `orbit` and the word `orbit`. It reads a
 database of its own, `orbit_preview`, and makes it if it is not there.
+
+## Close the rows that wait for nothing
+
+A worker publishes what it does, and Orbit reads it. A worker that refuses a
+job **before it starts** publishes nothing: it fails the job in the queue and
+takes the next one. This happens at every deployment where the worker restarts
+after the API, because the worker of the old build does not carry the class
+that the new API asks for.
+
+The row of that job stays `pending`, and the page shows a job that waits for a
+worker that will never take it.
+
+`ReconcileJobRuns` asks the queue about every row that stayed open too long:
+
+```ts
+import { ReconcileJobRuns } from '@artian-techs/adonis-orbit'
+
+await ReconcileJobRuns.schedule({ minutes: 5 }).cron('* * * * *').run()
+```
+
+- the queue holds the job, thus the row is right and stays as it is;
+- the queue holds the answer, thus the row takes it, with its error;
+- the queue holds nothing, thus the row becomes `lost`.
+
+`minutes` says how long a row stays open before the queue is asked about it.
+It leaves the events of the worker the time to land: a row that a worker closed
+a second ago is never read. Without it, five minutes.
+
+The rows are read from the table, thus this needs `DatabaseSink`. The answers
+go to every sink of the configuration, as the events of the worker do.
+
+A queue that keeps its failed jobs gives the error that stopped them. Ask for
+it in `config/queue.ts`, else the queue removes a job as soon as it fails and
+the row can only say `lost`:
+
+```ts
+defaultJobOptions: { removeOnFail: false },
+```
 
 ## Take out the traces that ended well
 

@@ -32,8 +32,14 @@ export interface JobIdentity {
   attempts: number
 }
 
-/** How a try of a job ended. */
-export type JobOutcome = 'completed' | 'failed' | 'retrying'
+/**
+ * How a try of a job ended.
+ *
+ * `lost` names a job that the queue does not hold any more, and that no worker
+ * said anything about. A worker that stops between the two says nothing, and
+ * the job would wait in the trace for ever.
+ */
+export type JobOutcome = 'completed' | 'failed' | 'retrying' | 'lost'
 
 /**
  * One step of one job.

@@ -8,6 +8,9 @@ import type { DateTime } from 'luxon'
  * `pending` and `running` are what the worker is about to do or does now.
  * `completed` and `failed` are what it did. `retrying` names a job that failed
  * a try and waits for the next one.
+ *
+ * `lost` names a job that the queue does not hold any more, and that no worker
+ * said anything about.
  */
 export const JobRunStatus = {
   PENDING: 'pending',
@@ -15,6 +18,7 @@ export const JobRunStatus = {
   RETRYING: 'retrying',
   COMPLETED: 'completed',
   FAILED: 'failed',
+  LOST: 'lost',
 } as const
 
 export type JobRunStatusValue = (typeof JobRunStatus)[keyof typeof JobRunStatus]

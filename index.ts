@@ -13,6 +13,8 @@ export type {
 export { default as JobRun, JobRunStatus, type JobRunStatusValue } from './src/models/job_run.js'
 export { default as SilencedJob } from './src/models/silenced_job.js'
 export { default as PruneJobRuns } from './src/jobs/prune_job_runs.js'
+export { default as ReconcileJobRuns } from './src/jobs/reconcile_job_runs.js'
+export { reconcileJobRuns, type QueueLookup, type ReconcileOptions } from './src/reconcile.js'
 export { retryRun } from './src/retry.js'
 export { stubsRoot } from './stubs/main.js'
 export { configure } from './configure.js'

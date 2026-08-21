@@ -8,6 +8,7 @@ const STATUS: Record<JobOutcome, string> = {
   completed: JobRunStatus.COMPLETED,
   failed: JobRunStatus.FAILED,
   retrying: JobRunStatus.RETRYING,
+  lost: JobRunStatus.LOST,
 }
 
 /**
@@ -91,7 +92,7 @@ export default class DatabaseSink implements Sink {
 
   /** Say how the try of a job ended. */
   #close({ job, at, outcome, duration, error }: Extract<JobEvent, { type: 'finished' }>) {
-    const ended = outcome === 'completed' || outcome === 'failed'
+    const ended = outcome !== 'retrying'
 
     return JobRun.query()
       .where('jobId', job.id)

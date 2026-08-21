@@ -77,6 +77,12 @@ const ERROR = `Error: The host said no
     at Worker.run (node_modules/@boringnode/queue/build/index.js:1204:7)
 Caused by: Error: connect ETIMEDOUT 10.0.0.4:587`
 
+/** What a row carries when the queue lets the job go and says nothing. */
+const LOST = 'The queue does not hold this job any more. No worker said how it ended.'
+
+/** The statuses of a job that a worker will not take again. */
+const ENDED: string[] = [JobRunStatus.COMPLETED, JobRunStatus.FAILED, JobRunStatus.LOST]
+
 /** Jobs of every status, and of two queues, to read on the page. */
 async function seed() {
   const now = DateTime.now()
@@ -90,17 +96,19 @@ async function seed() {
     { name: 'SyncCatalog', queue: 'default', status: JobRunStatus.RUNNING, duration: null },
     { name: 'SyncCatalog', queue: 'default', status: JobRunStatus.PENDING, duration: null },
     { name: 'HeartBeat', queue: 'default', status: JobRunStatus.COMPLETED, duration: 3.2 },
+    { name: 'SendMail', queue: 'mails', status: JobRunStatus.LOST, duration: null },
   ]
 
   for (const [index, row] of rows.entries()) {
-    const ended = row.status === JobRunStatus.COMPLETED || row.status === JobRunStatus.FAILED
+    const ended = ENDED.includes(row.status)
 
     await JobRun.create({
       ...row,
       jobId: randomUUID(),
       attempts: row.status === JobRunStatus.FAILED ? 3 : 1,
       payload: { to: 'someone@example.com', subject: 'Your order', tries: index },
-      error: row.status === JobRunStatus.FAILED ? ERROR : null,
+      error:
+        row.status === JobRunStatus.FAILED ? ERROR : row.status === JobRunStatus.LOST ? LOST : null,
       dispatchedAt: now.minus({ minutes: index * 7 + 2 }),
       startedAt: row.status === JobRunStatus.PENDING ? null : now.minus({ minutes: index * 7 + 1 }),
       finishedAt: ended ? now.minus({ minutes: index * 7 }) : null,

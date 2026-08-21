@@ -20,6 +20,8 @@ const THEMES = ['light', 'dark']
 const THEME_COOKIE = 'orbit_theme'
 const THEME_AGE = '1y'
 
+/** The statuses of a job that a person may ask for again. */
+const ENDED_BADLY: JobRunStatusValue[] = [JobRunStatus.FAILED, JobRunStatus.LOST]
 /** How far back the metrics read. */
 const METRICS_WINDOW = { hours: 24 }
 
@@ -29,6 +31,7 @@ const STATUS_LABELS: Record<JobRunStatusValue, string> = {
   [JobRunStatus.RETRYING]: 'Retrying',
   [JobRunStatus.COMPLETED]: 'Completed',
   [JobRunStatus.FAILED]: 'Failed',
+  [JobRunStatus.LOST]: 'Lost',
 }
 
 /**
@@ -43,6 +46,7 @@ const ICONS = {
   retrying: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
   completed: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
   failed: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><path d="M12 16.5v.5"/>',
+  lost: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5l5 5"/><path d="M14.5 9.5l-5 5"/>',
   silenced:
     '<path d="M18 8a6 6 0 0 0-9.3-5"/><path d="M6 9v5l-2 3h13"/><path d="M10.5 20a2 2 0 0 0 3 0"/><path d="M3 3l18 18"/>',
   metrics: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
@@ -336,7 +340,7 @@ export default class DashboardController {
       retriedAt: run.retriedAt?.toFormat('dd LLL yyyy HH:mm:ss') ?? null,
       retriedJobId: run.retriedJobId,
       retriedStatus: answer ? STATUS_LABELS[answer] : null,
-      canRetry: run.status === JobRunStatus.FAILED && !run.retriedJobId,
+      canRetry: ENDED_BADLY.includes(run.status) && !run.retriedJobId,
       isSilenced: silenced.includes(run.name),
     }
   }

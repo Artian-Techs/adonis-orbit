@@ -107,6 +107,15 @@ test.group('Dashboard', (group) => {
     assert.notInclude(html, 'Jobs per minute')
   })
 
+  test('a job that the queue lost carries a button to ask for it again', async ({ assert }) => {
+    await makeRun({ name: 'SendMail', status: JobRunStatus.LOST })
+
+    const html = await visit('index', '/queue?status=lost')
+
+    assert.include(html, 'SendMail')
+    assert.include(html, '>Retry</button>')
+  })
+
   test('the counts of the menu leave the silenced classes out', async ({ assert }) => {
     await makeRun({ name: 'Noisy', status: JobRunStatus.FAILED })
     await makeRun({ name: 'Noisy', status: JobRunStatus.FAILED })

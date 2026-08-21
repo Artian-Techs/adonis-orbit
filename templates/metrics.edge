@@ -1,0 +1,59 @@
+@component('orbit::components/layout', { title, active, menu, path, logo, favicon, theme })
+  <p class="muted">What each class and each queue cost over the last {{ hours }} hours.</p>
+
+  <h2>By job</h2>
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Ended</th>
+          <th>Failed</th>
+          <th>Average</th>
+          <th>Longest</th>
+        </tr>
+      </thead>
+      <tbody>
+        @each(row in byJob)
+          <tr>
+            <td><b>{{ row.label }}</b></td>
+            <td>{{ row.total }}</td>
+            <td>{{ row.failed }}</td>
+            <td>{{ row.average === null ? '—' : row.average + ' ms' }}</td>
+            <td>{{ row.longest === null ? '—' : row.longest + ' ms' }}</td>
+          </tr>
+        @else
+          <tr><td colspan="5" class="empty">No job ended in this window.</td></tr>
+        @end
+      </tbody>
+    </table>
+  </div>
+
+  <h2>By queue</h2>
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Queue</th>
+          <th>Ended</th>
+          <th>Failed</th>
+          <th>Average</th>
+          <th>Longest</th>
+        </tr>
+      </thead>
+      <tbody>
+        @each(row in byQueue)
+          <tr>
+            <td><b>{{ row.label }}</b></td>
+            <td>{{ row.total }}</td>
+            <td>{{ row.failed }}</td>
+            <td>{{ row.average === null ? '—' : row.average + ' ms' }}</td>
+            <td>{{ row.longest === null ? '—' : row.longest + ' ms' }}</td>
+          </tr>
+        @else
+          <tr><td colspan="5" class="empty">No job ended in this window.</td></tr>
+        @end
+      </tbody>
+    </table>
+  </div>
+@end

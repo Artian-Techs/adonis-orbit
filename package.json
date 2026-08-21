@@ -1,0 +1,129 @@
+{
+  "name": "@artian-techs/adonis-orbit",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "See what the queue of AdonisJS does, keep it, and ask a job again.",
+  "main": "build/index.js",
+  "exports": {
+    ".": "./build/index.js",
+    "./types": "./build/src/types.js",
+    "./orbit_provider": "./build/providers/orbit_provider.js",
+    "./stubs/*": "./build/stubs/*"
+  },
+  "files": [
+    "build/index.js",
+    "build/index.d.ts",
+    "build/configure.js",
+    "build/configure.d.ts",
+    "build/src",
+    "build/providers",
+    "build/stubs",
+    "build/templates",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "pnpm run compile",
+    "clean": "del-cli build",
+    "compile": "pnpm run clean && tsc",
+    "copy:templates": "cpy \"stubs/**/*.stub\" build/stubs && cpy \"templates/**/*.{edge,svg}\" build/templates",
+    "postcompile": "pnpm run copy:templates",
+    "test": "node --enable-source-maps --import=@poppinss/ts-exec bin/test.ts",
+    "preview": "node --enable-source-maps --import=@poppinss/ts-exec bin/preview.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "checks": "pnpm lint && pnpm typecheck",
+    "prepublishOnly": "pnpm run build",
+    "release": "release-it"
+  },
+  "prettier": "@adonisjs/prettier-config",
+  "keywords": [
+    "adonisjs",
+    "queue",
+    "jobs",
+    "dashboard"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Oussama Benhamed",
+    "email": "b.oussama@corposmart.dz"
+  },
+  "homepage": "https://github.com/artian-techs/adonis-orbit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/artian-techs/adonis-orbit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/artian-techs/adonis-orbit/issues"
+  },
+  "packageManager": "pnpm@10.24.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "peerDependencies": {
+    "@adonisjs/assembler": "^7.0.0 || ^8.0.0",
+    "@adonisjs/core": "^6.18.0 || ^7.0.0",
+    "@adonisjs/lucid": "^21.0.0 || ^22.0.0",
+    "@adonisjs/queue": "^0.6.0",
+    "edge.js": "^6.0.0",
+    "luxon": "^3.0.0"
+  },
+  "devDependencies": {
+    "@adonisjs/assembler": "^8.5.0",
+    "@adonisjs/core": "^7.4.0",
+    "@adonisjs/eslint-config": "^3.1.0",
+    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/prettier-config": "^1.5.0",
+    "@adonisjs/queue": "^0.6.2",
+    "@adonisjs/tsconfig": "^2.0.0",
+    "@japa/assert": "^4.2.0",
+    "@japa/runner": "^5.3.0",
+    "@poppinss/ts-exec": "^1.4.4",
+    "@types/luxon": "^3.7.4",
+    "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
+    "cpy-cli": "^5.0.0",
+    "del-cli": "^6.0.0",
+    "edge.js": "^6.0.2",
+    "eslint": "^10.8.1",
+    "luxon": "^3.5.0",
+    "pg": "^8.23.0",
+    "prettier": "^3.9.6",
+    "release-it": "^21.0.2",
+    "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "@adonisjs/assembler": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  },
+  "release-it": {
+    "git": {
+      "requireCleanWorkingDir": true,
+      "requireUpstream": true,
+      "commitMessage": "chore(release): ${version}",
+      "tagAnnotation": "v${version}",
+      "push": true,
+      "tagName": "v${version}"
+    },
+    "github": {
+      "release": true
+    },
+    "npm": {
+      "publish": true,
+      "skipChecks": true
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": {
+          "name": "angular"
+        }
+      }
+    }
+  }
+}

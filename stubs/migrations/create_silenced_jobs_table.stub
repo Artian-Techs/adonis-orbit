@@ -1,0 +1,29 @@
+{{{
+  exports({ to: app.makePath(migration.folder, migration.fileName) })
+}}}
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+/**
+ * The jobs that the page does not show.
+ *
+ * A row holds the name of a class, not a job. Nothing is removed and nothing
+ * stops: the worker keeps its work, the table keeps its trace, and only the
+ * lists of the page leave the name out. Take the row away, and everything the
+ * job did comes back, including what it did while it was silent.
+ */
+export default class extends BaseSchema {
+  protected tableName = 'silenced_jobs'
+
+  async up() {
+    this.schema.createTable(this.tableName, (table) => {
+      table.bigIncrements('id')
+      table.string('name').notNullable().unique()
+      table.timestamp('created_at')
+      table.timestamp('updated_at')
+    })
+  }
+
+  async down() {
+    this.schema.dropTable(this.tableName)
+  }
+}

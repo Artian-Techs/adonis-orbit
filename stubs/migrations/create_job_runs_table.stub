@@ -1,0 +1,62 @@
+{{{
+  exports({ to: app.makePath(migration.folder, migration.fileName) })
+}}}
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+/**
+ * What the queue did with each job.
+ *
+ * The queue keeps its jobs in Redis and removes them when they end. This table
+ * holds the trace: a job that failed stays here, with the values it carried,
+ * and a person can ask for it again.
+ *
+ * One row for one job. A job that is tried again keeps its row, and the row
+ * counts the tries.
+ */
+export default class extends BaseSchema {
+  protected tableName = 'job_runs'
+
+  async up() {
+    this.schema.createTable(this.tableName, (table) => {
+      table.bigIncrements('id')
+
+      /**
+       * The identifier that the queue gives to a job. It names the same job in
+       * the journal of the worker and in Redis.
+       */
+      table.uuid('job_id').notNullable().unique()
+
+      table.string('name').notNullable()
+      table.string('queue').notNullable()
+      table.string('status').notNullable()
+
+      table.jsonb('payload').notNullable().defaultTo('{}')
+
+      table.integer('attempts').notNullable().defaultTo(0)
+      table.text('error').nullable()
+      table.decimal('duration', 12, 2).nullable()
+
+      table.timestamp('dispatched_at').nullable()
+      table.timestamp('started_at').nullable()
+      table.timestamp('finished_at').nullable()
+
+      /**
+       * The day a person asked for this job again, and the job that answered
+       * that request. A row keeps its own history: it is never replaced.
+       */
+      table.timestamp('retried_at').nullable()
+      table.uuid('retried_job_id').nullable()
+
+      table.timestamp('created_at')
+      table.timestamp('updated_at')
+
+      table.index('status')
+      table.index('name')
+      table.index(['status', 'id'])
+    })
+  }
+
+  async down() {
+    this.schema.dropTable(this.tableName)
+  }
+}

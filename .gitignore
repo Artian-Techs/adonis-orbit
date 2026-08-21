@@ -1,0 +1,9 @@
+node_modules
+build
+coverage
+tests/tmp
+.env
+*.log
+.DS_Store
+CLAUDE.md
+.claude

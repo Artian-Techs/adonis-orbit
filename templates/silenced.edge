@@ -1,0 +1,35 @@
+@component('orbit::components/layout', { title, active, menu, path, logo, favicon, theme })
+  <p class="muted" style="max-width: 640px">
+    These job classes are left out of the lists. Their work goes on and their
+    trace is written. Take a name away, and everything it did comes back,
+    including what it did while it was silent.
+  </p>
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @each(name in names)
+          <tr>
+            <td><b>{{ name }}</b></td>
+            <td>
+              <form method="post" action="{{ path }}/jobs/{{ name }}/silence">
+                @if(csrfToken)
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                @end
+                <button type="submit">Show again</button>
+              </form>
+            </td>
+          </tr>
+        @else
+          <tr><td colspan="2" class="empty">No job is silenced.</td></tr>
+        @end
+      </tbody>
+    </table>
+  </div>
+@end

@@ -1,0 +1,31 @@
+{{{
+  exports({ to: app.configPath('orbit.ts') })
+}}}
+import { DatabaseSink, basicAuth, defineConfig } from '@artian-techs/adonis-orbit'
+
+import env from '#start/env'
+
+/**
+ * The page that shows what the queue does.
+ *
+ * It is read by the team that runs the machine, not by the users of the
+ * application, thus it holds no session.
+ */
+export default defineConfig({
+  path: '/queue',
+
+  /**
+   * Who may read the page. `basicAuth` asks for a name and a word, and answers
+   * "not found" while one of the two is missing.
+   */
+  authorize: basicAuth({
+    user: env.get('ORBIT_DASHBOARD_USER'),
+    password: env.get('ORBIT_DASHBOARD_PASSWORD'),
+  }),
+
+  /**
+   * Where the trace of the jobs goes. Nothing is kept that this list does not
+   * name: take `DatabaseSink` away, and the table stays empty.
+   */
+  sinks: [new DatabaseSink()],
+})

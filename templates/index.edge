@@ -1,0 +1,111 @@
+@component('orbit::components/layout', { title, active, menu, path, logo, favicon, theme })
+  @if(showStats)
+    <div class="cards">
+      <div class="card">
+        <div class="value">{{ stats.perMinute }}</div>
+        <div class="label">Jobs per minute</div>
+      </div>
+      <div class="card">
+        <div class="value">{{ stats.pastHour }}</div>
+        <div class="label">Jobs past hour</div>
+      </div>
+      <div class="card">
+        <div class="value">{{ stats.failedPastWeek }}</div>
+        <div class="label">Failed jobs past 7 days</div>
+      </div>
+      <div class="card">
+        <div class="value">{{ stats.running }}</div>
+        <div class="label">Jobs running now</div>
+      </div>
+    </div>
+
+    <h2>Recent jobs</h2>
+  @end
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Status</th>
+          <th>Attempts</th>
+          <th>Duration</th>
+          <th>Dates</th>
+          <th>Details</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @each(row in rows)
+          <tr>
+            <td>
+              <b>{{ row.name }}</b>
+              <div class="muted">{{ row.queue }}</div>
+              <div class="muted">{{ row.jobId }}</div>
+            </td>
+            <td><span class="status {{ row.status }}">{{ row.statusLabel }}</span></td>
+            <td>{{ row.attempts }}</td>
+            <td>{{ row.duration ? row.duration + ' ms' : '—' }}</td>
+            <td class="muted">
+              @if(row.dispatchedAt)
+                <div>queued {{ row.dispatchedAt }}</div>
+              @end
+              @if(row.finishedAt)
+                <div>ended {{ row.finishedAt }}</div>
+              @end
+              @if(row.retriedAt)
+                <div>asked again {{ row.retriedAt }}</div>
+              @end
+            </td>
+            <td>
+              <details>
+                <summary>payload</summary>
+                <pre>{{ row.payload }}</pre>
+              </details>
+              @if(row.error)
+                <details>
+                  <summary>error</summary>
+                  <pre>{{ row.error }}</pre>
+                </details>
+              @end
+            </td>
+            <td>
+              <div class="actions">
+                @if(row.canRetry)
+                  <form method="post" action="{{ path }}/runs/{{ row.id }}/retry">
+                    @if(csrfToken)
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    @end
+                    <button type="submit">Retry</button>
+                  </form>
+                @elseif(row.retriedJobId)
+                  <a class="muted" href="{{ path }}?job={{ row.retriedJobId }}">
+                    asked again{{ row.retriedStatus ? ' — ' + row.retriedStatus : '' }}
+                  </a>
+                @end
+                <form method="post" action="{{ path }}/jobs/{{ row.name }}/silence">
+                  @if(csrfToken)
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  @end
+                  <button type="submit">Silence</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        @else
+          <tr><td colspan="7" class="empty">No job yet.</td></tr>
+        @end
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    @if(page > 1)
+      <a href="{{ path }}?page={{ page - 1 }}&status={{ status }}">← Previous</a>
+    @end
+    <span class="muted">Page {{ page }} of {{ lastPage }} — {{ total }} job(s)</span>
+    @if(page < lastPage)
+      <a href="{{ path }}?page={{ page + 1 }}&status={{ status }}">Next →</a>
+    @end
+  </div>
+@end

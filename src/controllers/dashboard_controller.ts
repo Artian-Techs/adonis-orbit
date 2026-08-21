@@ -166,8 +166,8 @@ export default class DashboardController {
       active: 'metrics',
       title: 'Metrics',
       hours: METRICS_WINDOW.hours,
-      byJob: await this.#metricsBy('name', since),
-      byQueue: await this.#metricsBy('queue', since),
+      byJob: await this.#metricsBy(['name', 'queue'], since),
+      byQueue: await this.#metricsBy(['queue'], since),
     })
   }
 
@@ -255,16 +255,18 @@ export default class DashboardController {
    * The count of the failures rides with the count of the rows: one reading of
    * the table answers both.
    */
-  async #metricsBy(column: 'name' | 'queue', since: Date) {
+  async #metricsBy(columns: ('name' | 'queue')[], since: Date) {
+    const group = columns.join(', ')
+
     const result = await db.rawQuery(
-      `select ${column} as label,
+      `select ${group},
               count(*) as total,
               count(*) filter (where status = ?) as failed,
               round(avg(duration)::numeric, 1) as average,
               round(max(duration)::numeric, 1) as longest
          from ${JobRun.table}
         where finished_at > ?
-        group by ${column}
+        group by ${group}
         order by count(*) desc`,
       [JobRunStatus.FAILED, since]
     )

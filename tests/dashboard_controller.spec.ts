@@ -225,7 +225,7 @@ test.group('Dashboard', (group) => {
 
     assert.include(
       html,
-      '<td><b>SendMail</b></td> <td>3</td> <td>1</td> <td>20 ms</td> <td>30 ms</td>'
+      '<td><b>SendMail</b></td> <td>mails</td> <td>3</td> <td>1</td> <td>20 ms</td> <td>30 ms</td>'
     )
     assert.include(
       html,
@@ -234,6 +234,25 @@ test.group('Dashboard', (group) => {
     assert.include(
       html,
       '<td><b>default</b></td> <td>1</td> <td>0</td> <td>5 ms</td> <td>5 ms</td>'
+    )
+  })
+
+  test('a class that runs on two queues is counted once for each', async ({ assert }) => {
+    const finishedAt = DateTime.now().minus({ minutes: 5 })
+
+    await makeRun({ name: 'SendMail', queue: 'mails', duration: 10, finishedAt })
+    await makeRun({ name: 'SendMail', queue: 'urgent', duration: 40, finishedAt })
+
+    const page = await visit('metrics')
+    const html = page.replace(/\s+/g, ' ')
+
+    assert.include(
+      html,
+      '<td><b>SendMail</b></td> <td>mails</td> <td>1</td> <td>0</td> <td>10 ms</td> <td>10 ms</td>'
+    )
+    assert.include(
+      html,
+      '<td><b>SendMail</b></td> <td>urgent</td> <td>1</td> <td>0</td> <td>40 ms</td> <td>40 ms</td>'
     )
   })
 

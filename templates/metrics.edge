@@ -7,6 +7,7 @@
       <thead>
         <tr>
           <th>Job</th>
+          <th>Queue</th>
           <th>Ended</th>
           <th>Failed</th>
           <th>Average</th>
@@ -17,13 +18,14 @@
         @each(row in byJob)
           <tr>
             <td><b>{{ row.label }}</b></td>
+            <td>{{ row.queue }}</td>
             <td>{{ row.total }}</td>
             <td>{{ row.failed }}</td>
             <td>{{ row.average === null ? '—' : row.average + ' ms' }}</td>
             <td>{{ row.longest === null ? '—' : row.longest + ' ms' }}</td>
           </tr>
         @else
-          <tr><td colspan="5" class="empty">No job ended in this window.</td></tr>
+          <tr><td colspan="6" class="empty">No job ended in this window.</td></tr>
         @end
       </tbody>
     </table>

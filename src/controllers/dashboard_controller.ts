@@ -75,6 +75,10 @@ const ICONS = {
  * It reads the table, not Redis: a job that ended left Redis, and the table
  * keeps it. The page is served by the API itself, outside the front, thus it
  * answers even when the front is down.
+ *
+ * A button answers with the page that carried it, and that page keeps the
+ * values of its address: a list of one status stays on that status, and a page
+ * of a pager stays on its number.
  */
 export default class DashboardController {
   #silenced?: string[]
@@ -118,8 +122,8 @@ export default class DashboardController {
     let runs = await build().paginate(page, perPage)
 
     /**
-     * A person who asks for one job asks for that job, thus a class that is
-     * silenced answers here as any other class.
+     * A page that stands past the last one holds nothing. The last page holds
+     * the rows that the person asked for.
      */
     if (page > runs.lastPage && runs.lastPage > 0) {
       runs = await build().paginate(runs.lastPage, perPage)
@@ -312,7 +316,7 @@ export default class DashboardController {
 
     await retryRun(run)
 
-    return response.redirect().back()
+    return response.redirect().withQs().back()
   }
 
   /**
@@ -336,7 +340,7 @@ export default class DashboardController {
       sameSite: 'lax',
     })
 
-    return response.redirect().back()
+    return response.redirect().withQs().back()
   }
 
   /** Take a class out of the lists, or put it back. */
@@ -350,7 +354,7 @@ export default class DashboardController {
       await SilencedJob.create({ name })
     }
 
-    return response.redirect().back()
+    return response.redirect().withQs().back()
   }
 
   /** The four numbers of the overview. */
@@ -380,10 +384,14 @@ export default class DashboardController {
   }
 
   /**
-   * What one column cost over the window.
+   * What one column, or two, cost over the window.
    *
    * The count of the failures rides with the count of the rows: one reading of
    * the table answers both.
+   *
+   * A class that runs on two queues is read twice, once for each queue: the
+   * duration of a job is the duration of the queue that carries it, and one
+   * average over the two says nothing about either.
    */
   async #metricsBy(columns: ('name' | 'queue')[], since: Date) {
     const group = columns.join(', ')
@@ -402,7 +410,8 @@ export default class DashboardController {
     )
 
     return (result.rows as Record<string, string>[]).map((row) => ({
-      label: row.label,
+      label: row[columns[0]],
+      queue: columns.length > 1 ? row[columns[1]] : null,
       total: Number(row.total),
       failed: Number(row.failed),
       average: row.average === null ? null : Number(row.average),

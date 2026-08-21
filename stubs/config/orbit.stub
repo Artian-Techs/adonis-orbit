@@ -15,7 +15,7 @@ export default defineConfig({
   path: '/queue',
 
   /**
-   * Who may read the page. `basicAuth` asks for a name and a word, and answers
+   * Who may read the page. basicAuth asks for a name and a word, and answers
    * "not found" while one of the two is missing.
    */
   authorize: basicAuth({
@@ -25,7 +25,7 @@ export default defineConfig({
 
   /**
    * Where the trace of the jobs goes. Nothing is kept that this list does not
-   * name: take `DatabaseSink` away, and the table stays empty.
+   * name: take DatabaseSink away, and the table stays empty.
    */
   sinks: [new DatabaseSink()],
 })

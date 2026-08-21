@@ -7,6 +7,7 @@ import { test } from '@japa/runner'
 
 import { configure } from '../configure.js'
 import { stubsRoot } from '../stubs/main.js'
+import { getApp } from './helpers.js'
 
 interface Written {
   providers: string[]
@@ -118,5 +119,34 @@ test.group('Configure', () => {
       ORBIT_DASHBOARD_PASSWORD: 'Env.schema.string.optional()',
     })
     assert.isString(written.comment)
+  })
+})
+
+test.group('Stubs', () => {
+  test('every stub of the package is read by the engine of the framework', async ({ assert }) => {
+    const written = await run()
+
+    for (const { name, data } of written.stubs) {
+      const stubs = await getApp().stubs.create()
+      const stub = await stubs.build(name, { source: stubsRoot })
+      const { contents, destination } = await stub.prepare(data)
+
+      assert.isNotEmpty(contents)
+      assert.isString(destination)
+    }
+  })
+
+  test('the configuration that the stub writes carries what an application needs', async ({
+    assert,
+  }) => {
+    const stubs = await getApp().stubs.create()
+    const stub = await stubs.build('config/orbit.stub', { source: stubsRoot })
+    const { contents } = await stub.prepare({})
+
+    assert.include(contents, "from '@artian-techs/adonis-orbit'")
+    assert.include(contents, 'basicAuth(')
+    assert.include(contents, 'new DatabaseSink()')
+    assert.include(contents, 'ORBIT_DASHBOARD_USER')
+    assert.include(contents, 'ORBIT_DASHBOARD_PASSWORD')
   })
 })

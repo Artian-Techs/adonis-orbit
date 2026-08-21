@@ -58,16 +58,39 @@ function keep(rule: PayloadRule, job: Omit<JobIdentity, 'payload'>, payload: unk
  * A sink that refuses an event must never stop the job that runs.
  *
  * A configuration that names no sink keeps nothing.
+ *
+ * The recorder gives back a `flush`. It waits for the writes that are open,
+ * and the application calls it before it closes what the sinks use.
  */
 export function recordJobRuns(config: OrbitConfig) {
   const sinks: Sink[] = config.sinks ?? []
   const rule = config.payload ?? 'full'
 
+  /** The writes that are started, and that no sink finished yet. */
+  const pending = new Set<Promise<void>>()
+
   function write(events: JobEvent[]) {
     for (const sink of sinks) {
-      void sink.write(events).catch((error) => {
+      const done = sink.write(events).catch((error) => {
         logger.error({ err: error }, 'The trace of a job could not be written')
       })
+
+      pending.add(done)
+      void done.finally(() => pending.delete(done))
+    }
+  }
+
+  /**
+   * Wait for every write that is open.
+   *
+   * A command puts a job in the queue and stops at once. The writes of the
+   * sinks are still open at that moment, and the application closes its
+   * database after this call. A write that a sink starts while this one waits
+   * is waited for too.
+   */
+  async function flush() {
+    while (pending.size > 0) {
+      await Promise.all(pending)
     }
   }
 
@@ -125,4 +148,6 @@ export function recordJobRuns(config: OrbitConfig) {
       ])
     },
   })
+
+  return { flush }
 }

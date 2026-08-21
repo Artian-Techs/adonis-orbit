@@ -24,6 +24,15 @@ class Broken implements Sink {
   }
 }
 
+/** A sink that answers after the job that gave it the event. */
+class Slow extends Collector {
+  async write(events: JobEvent[]) {
+    await new Promise((resolve) => setTimeout(resolve, 60))
+
+    this.events.push(...events)
+  }
+}
+
 const everything = new Collector()
 const nothing = new Collector()
 const chosen = new Collector()
@@ -39,8 +48,11 @@ recordJobRuns({
 })
 recordJobRuns({ path: '/queue', authorize: () => false, sinks: [new Broken(), beside] })
 
-/** Say that one job waits, and leave the writes the time to land. */
-async function dispatch(id: string) {
+const slow = new Slow()
+const late = recordJobRuns({ path: '/queue', authorize: () => false, sinks: [slow] })
+
+/** Say that one job waits. */
+function publish(id: string) {
   tracingChannels.dispatchChannel.asyncEnd.publish({
     jobs: [
       {
@@ -52,6 +64,11 @@ async function dispatch(id: string) {
     ],
     queue: 'mails',
   } as never)
+}
+
+/** Say that one job waits, and leave the writes the time to land. */
+async function dispatch(id: string) {
+  publish(id)
 
   await settle()
 }
@@ -72,7 +89,7 @@ test.group('Sinks', () => {
     assert.equal(event?.job.name, 'SendMail')
     assert.equal(event?.job.queue, 'mails')
     assert.equal(event?.job.attempts, 0)
-    assert.isNotNull(eventOf(chosen, id))
+    assert.exists(eventOf(chosen, id))
   })
 
   test('the whole payload travels when no rule says otherwise', async ({ assert }) => {
@@ -107,6 +124,44 @@ test.group('Sinks', () => {
 
     await dispatch(id)
 
-    assert.isNotNull(eventOf(beside, id))
+    assert.exists(eventOf(beside, id))
+  })
+})
+
+test.group('Flush', () => {
+  test('flush waits for a write that a sink did not finish', async ({ assert }) => {
+    const id = randomUUID()
+
+    publish(id)
+    assert.isUndefined(eventOf(slow, id))
+
+    await late.flush()
+
+    assert.exists(eventOf(slow, id))
+  })
+
+  test('flush gives back at once while no write is open', async ({ assert }) => {
+    const started = Date.now()
+
+    await late.flush()
+
+    assert.isBelow(Date.now() - started, 50)
+  })
+
+  test('a sink that is down does not stop the flush', async ({ assert }) => {
+    const broken = recordJobRuns({
+      path: '/queue',
+      authorize: () => false,
+      sinks: [new Broken()],
+    })
+
+    publish(randomUUID())
+
+    let refused = false
+    await broken.flush().catch(() => {
+      refused = true
+    })
+
+    assert.isFalse(refused)
   })
 })

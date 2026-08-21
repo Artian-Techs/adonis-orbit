@@ -34,7 +34,16 @@ export default class OrbitProvider {
     Locator.register(PruneJobRuns.name, PruneJobRuns)
 
     const { recordJobRuns } = await import('../src/recorder.js')
-    recordJobRuns(config)
+    const recorder = recordJobRuns(config)
+
+    /**
+     * A sink answers after the job does, and the application closes its
+     * database when it stops. The writes that are open are waited for first.
+     *
+     * This hook runs before the providers stop, thus the database of the
+     * application is still open.
+     */
+    this.app.terminating(() => recorder.flush())
 
     const router = await this.app.container.make('router')
     const { registerRoutes } = await import('../src/routes.js')

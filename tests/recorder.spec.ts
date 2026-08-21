@@ -53,7 +53,7 @@ test.group('Recorder', (group) => {
     assert.isNotNull(run.dispatchedAt)
     assert.isNull(run.startedAt)
 
-    assert.isNotNull(await waitFor(() => find(second.id)))
+    assert.exists(await waitFor(() => find(second.id)))
   })
 
   test('a dispatch that failed opens no row', async ({ assert }) => {

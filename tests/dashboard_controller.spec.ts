@@ -131,7 +131,7 @@ test.group('Dashboard', (group) => {
   test('a class is taken out of the lists, and put back', async ({ assert }) => {
     await send('silence', { name: 'Noisy' })
 
-    assert.isNotNull(await SilencedJob.findBy('name', 'Noisy'))
+    assert.exists(await SilencedJob.findBy('name', 'Noisy'))
 
     await send('silence', { name: 'Noisy' })
 
@@ -143,7 +143,7 @@ test.group('Dashboard', (group) => {
 
     await send('silence', { name: 'Noisy' })
 
-    assert.isNotNull(await JobRun.find(run.id))
+    assert.exists(await JobRun.find(run.id))
   })
 
   test('a job that failed is asked again from the page', async ({ assert }) => {

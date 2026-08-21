@@ -1,6 +1,6 @@
 {
   "name": "@artian-techs/adonis-orbit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "See what the queue of AdonisJS does, keep it, and ask a job again.",
   "main": "build/index.js",

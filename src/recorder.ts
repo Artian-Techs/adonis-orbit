@@ -57,6 +57,12 @@ function keep(rule: PayloadRule, job: Omit<JobIdentity, 'payload'>, payload: unk
  * The channels of the queue answer at once, thus the events are written apart.
  * A sink that refuses an event must never stop the job that runs.
  *
+ * The start and the end of a short job come in the same tick, and a sink
+ * answers each write apart. The end would land before the start, and the row
+ * would stay open. The events of one job thus go to one sink one after the
+ * other, in the order that the queue gave them. Two jobs do not wait for each
+ * other, and two sinks do not wait for each other.
+ *
  * A configuration that names no sink keeps nothing.
  *
  * The recorder gives back a `flush`. It waits for the writes that are open,
@@ -69,14 +75,37 @@ export function recordJobRuns(config: OrbitConfig) {
   /** The writes that are started, and that no sink finished yet. */
   const pending = new Set<Promise<void>>()
 
+  /** The last write of each job that a sink did not finish yet, by sink. */
+  const lanes = new Map(sinks.map((sink) => [sink, new Map<string, Promise<void>>()]))
+
   function write(events: JobEvent[]) {
+    const ids = [...new Set(events.map((event) => event.job.id))]
+
     for (const sink of sinks) {
-      const done = sink.write(events).catch((error) => {
-        logger.error({ err: error }, 'The trace of a job could not be written')
-      })
+      const lane = lanes.get(sink)!
+      const before = Promise.all(ids.map((id) => lane.get(id)))
+
+      const done = before
+        .then(() => sink.write(events))
+        .catch((error) => {
+          logger.error({ err: error }, 'The trace of a job could not be written')
+        })
+
+      for (const id of ids) {
+        lane.set(id, done)
+      }
 
       pending.add(done)
-      void done.finally(() => pending.delete(done))
+
+      void done.finally(() => {
+        pending.delete(done)
+
+        for (const id of ids) {
+          if (lane.get(id) === done) {
+            lane.delete(id)
+          }
+        }
+      })
     }
   }
 

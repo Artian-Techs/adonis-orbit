@@ -10,7 +10,11 @@ import DatabaseSink from '../src/sinks/database_sink.js'
 import { settle, truncate, waitFor } from './helpers.js'
 
 /** The recorder listens once, as the provider makes it listen once. */
-recordJobRuns({ path: '/queue', authorize: () => false, sinks: [new DatabaseSink()] })
+const recorder = recordJobRuns({
+  path: '/queue',
+  authorize: () => false,
+  sinks: [new DatabaseSink()],
+})
 
 function jobData(overrides: Record<string, unknown> = {}) {
   return {
@@ -200,5 +204,25 @@ test.group('Recorder', (group) => {
 
     assert.isNull(run.finishedAt)
     assert.include(run.error, 'The host said no')
+  })
+
+  test('the end of a short job lands after its start', async ({ assert }) => {
+    const jobs = Array.from({ length: 2000 }, () => jobData())
+
+    for (const job of jobs) {
+      const message = { job: { ...job, acquiredAt: Date.now() }, queue: 'default' }
+
+      execute('start', message)
+      execute('asyncEnd', { ...message, status: 'completed', duration: 1 })
+    }
+
+    await recorder.flush()
+
+    const counts = await JobRun.query().select('status').count('* as total').groupBy('status')
+
+    assert.deepEqual(
+      counts.map((row) => [row.status, Number(row.$extras.total)]),
+      [[JobRunStatus.COMPLETED, jobs.length]]
+    )
   })
 })
